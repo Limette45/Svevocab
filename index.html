@@ -111,14 +111,23 @@
     .selected-word {
         overflow-wrap: anywhere;
         word-break: normal;
+        flex: 1;
     }
 
-    .svenska-button {
+    .dictionary-buttons {
+        display: flex;
+        align-items: center;
+        gap: 5px;
         flex-shrink: 0;
+    }
+
+    .svenska-button,
+    .wiktionary-button {
         padding: 4px 7px;
         font-size: 12px;
         border-radius: 4px;
         background: #666;
+        white-space: nowrap;
     }
 
     #copyButton {
@@ -395,6 +404,36 @@ function getDictionaryWord(word) {
 }
 
 
+function openSvenska(word) {
+    const dictionaryWord =
+        getDictionaryWord(word);
+
+    const url =
+        "https://svenska.se/?activeTab=alla&q=" +
+        encodeURIComponent(dictionaryWord);
+
+    window.open(
+        url,
+        "_blank"
+    );
+}
+
+
+function openWiktionary(word) {
+    const dictionaryWord =
+        getDictionaryWord(word);
+
+    const url =
+        "https://sv.wiktionary.org/wiki/" +
+        encodeURIComponent(dictionaryWord);
+
+    window.open(
+        url,
+        "_blank"
+    );
+}
+
+
 function renderSelected() {
     selectedWords.innerHTML = "";
 
@@ -414,34 +453,54 @@ function renderSelected() {
         word.textContent =
             item.word;
 
-        const button =
+        const buttons =
+            document.createElement("div");
+
+        buttons.className =
+            "dictionary-buttons";
+
+        const svenskaButton =
             document.createElement("button");
 
-        button.className =
+        svenskaButton.className =
             "svenska-button";
 
-        button.textContent =
+        svenskaButton.textContent =
             "Svenska.se";
 
-        button.addEventListener(
+        svenskaButton.addEventListener(
             "click",
             () => {
-                const dictionaryWord =
-                    getDictionaryWord(item.word);
-
-                const url =
-                    "https://svenska.se/?activeTab=alla&q=" +
-                    encodeURIComponent(dictionaryWord);
-
-                window.open(
-                    url,
-                    "_blank"
-                );
+                openSvenska(item.word);
             }
         );
 
+        const wiktionaryButton =
+            document.createElement("button");
+
+        wiktionaryButton.className =
+            "wiktionary-button";
+
+        wiktionaryButton.textContent =
+            "Wiktionary";
+
+        wiktionaryButton.addEventListener(
+            "click",
+            () => {
+                openWiktionary(item.word);
+            }
+        );
+
+        buttons.appendChild(
+            svenskaButton
+        );
+
+        buttons.appendChild(
+            wiktionaryButton
+        );
+
         row.appendChild(word);
-        row.appendChild(button);
+        row.appendChild(buttons);
 
         selectedWords.appendChild(row);
     });
@@ -523,6 +582,162 @@ function selectRandomWords() {
         currentSelected = [];
 
         saveStorage();
+        renderResults();
+        updateButtonState();
+
+        return;
+    }
+
+    const shuffled =
+        [...remaining];
+
+    for (
+        let i = shuffled.length - 1;
+        i > 0;
+        i--
+    ) {
+        const j =
+            Math.floor(
+                Math.random() * (i + 1)
+            );
+
+        [
+            shuffled[i],
+            shuffled[j]
+        ] = [
+            shuffled[j],
+            shuffled[i]
+        ];
+    }
+
+    currentSelected =
+        shuffled.slice(0, 10);
+
+    currentSelected.forEach(item => {
+        if (!usedSet.has(item.word)) {
+            usedWords.push(item.word);
+        }
+    });
+
+    saveStorage();
+
+    renderResults();
+    updateButtonState();
+}
+
+
+randomButton.addEventListener(
+    "click",
+    selectRandomWords
+);
+
+
+copyButton.addEventListener(
+    "click",
+    async () => {
+        const text =
+            currentSelected
+                .map(item => item.word)
+                .join("\n");
+
+        if (!text) {
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(
+                text
+            );
+
+            copyButton.textContent =
+                "Copied";
+
+            setTimeout(() => {
+                copyButton.textContent =
+                    "Copy";
+            }, 1000);
+
+        } catch {
+            const textarea =
+                document.createElement("textarea");
+
+            textarea.value = text;
+
+            document.body.appendChild(
+                textarea
+            );
+
+            textarea.select();
+
+            document.execCommand("copy");
+
+            textarea.remove();
+
+            copyButton.textContent =
+                "Copied";
+
+            setTimeout(() => {
+                copyButton.textContent =
+                    "Copy";
+            }, 1000);
+        }
+    }
+);
+
+
+fileInput.addEventListener(
+    "change",
+    event => {
+        const file =
+            event.target.files[0];
+
+        if (!file) {
+            return;
+        }
+
+        const reader =
+            new FileReader();
+
+        reader.onload = event => {
+            const text =
+                event.target.result;
+
+            words =
+                parseText(text);
+
+            const currentWordSet =
+                new Set(
+                    words.map(item => item.word)
+                );
+
+            usedWords =
+                usedWords.filter(
+                    word =>
+                        currentWordSet.has(word)
+                );
+
+            currentSelected = [];
+
+            fileName = file.name;
+
+            saveStorage();
+
+            renderResults();
+            updateButtonState();
+        };
+
+        reader.readAsText(file);
+    }
+);
+
+
+loadStorage();
+renderResults();
+updateButtonState();
+</script>
+
+</body>
+</html>        saveStorage();
         renderResults();
         updateButtonState();
 
