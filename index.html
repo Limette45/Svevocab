@@ -92,15 +92,33 @@
     }
 
     #selectedWords {
-        white-space: pre-wrap;
-        overflow-wrap: anywhere;
-        word-break: normal;
         background: white;
         border-radius: 8px;
         padding: 15px;
         font-size: 18px;
         line-height: 1.6;
         min-height: 40px;
+    }
+
+    .selected-word-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 4px 0;
+    }
+
+    .selected-word {
+        overflow-wrap: anywhere;
+        word-break: normal;
+    }
+
+    .svenska-button {
+        flex-shrink: 0;
+        padding: 4px 7px;
+        font-size: 12px;
+        border-radius: 4px;
+        background: #666;
     }
 
     #copyButton {
@@ -352,10 +370,49 @@ function updateButtonState() {
 
 
 function renderSelected() {
-    selectedWords.textContent =
-        currentSelected
-            .map(item => item.word)
-            .join("\n");
+    selectedWords.innerHTML = "";
+
+    currentSelected.forEach(item => {
+        const row =
+            document.createElement("div");
+
+        row.className =
+            "selected-word-row";
+
+        const word =
+            document.createElement("span");
+
+        word.className =
+            "selected-word";
+
+        word.textContent =
+            item.word;
+
+        const button =
+            document.createElement("button");
+
+        button.className =
+            "svenska-button";
+
+        button.textContent =
+            "Svenska.se";
+
+        button.addEventListener(
+            "click",
+            () => {
+                const url =
+                    "https://svenska.se/?activeTab=alla&q=" +
+                    encodeURIComponent(item.word);
+
+                window.open(url, "_blank");
+            }
+        );
+
+        row.appendChild(word);
+        row.appendChild(button);
+
+        selectedWords.appendChild(row);
+    });
 }
 
 
@@ -385,7 +442,8 @@ function renderResults() {
         const row =
             document.createElement("div");
 
-        row.className = "word-row";
+        row.className =
+            "word-row";
 
         const word =
             document.createElement("span");
@@ -408,7 +466,7 @@ function renderResults() {
         if (item.meaning) {
             row.appendChild(
                 document.createTextNode(
-                    "        " + item.meaning
+                    "       " + item.meaning
                 )
             );
         }
