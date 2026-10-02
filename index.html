@@ -181,9 +181,13 @@ const STORAGE_KEY_USED =
 const STORAGE_KEY_CURRENT =
     "swedishWordRandomizer_7f3a9c_current";
 
+const STORAGE_KEY_FILENAME =
+    "swedishWordRandomizer_7f3a9c_filename";
+
 let words = [];
 let usedWords = [];
 let currentSelected = [];
+let fileName = "";
 
 const fileInput =
     document.getElementById("fileInput");
@@ -215,12 +219,19 @@ function loadStorage() {
         const savedCurrent =
             localStorage.getItem(STORAGE_KEY_CURRENT);
 
+        const savedFileName =
+            localStorage.getItem(STORAGE_KEY_FILENAME);
+
         if (savedWords) {
             words = JSON.parse(savedWords);
         }
 
         if (savedUsed) {
             usedWords = JSON.parse(savedUsed);
+        }
+
+        if (savedFileName) {
+            fileName = savedFileName;
         }
 
         if (savedCurrent) {
@@ -244,6 +255,7 @@ function loadStorage() {
         words = [];
         usedWords = [];
         currentSelected = [];
+        fileName = "";
     }
 }
 
@@ -264,6 +276,11 @@ function saveStorage() {
         JSON.stringify(
             currentSelected.map(item => item.word)
         )
+    );
+
+    localStorage.setItem(
+        STORAGE_KEY_FILENAME,
+        fileName
     );
 }
 
@@ -291,7 +308,8 @@ function parseLine(line) {
         };
     }
 
-    const posStart = posMatch.index;
+    const posStart =
+        posMatch.index;
 
     let beforePos =
         line.slice(0, posStart).trim();
@@ -369,6 +387,14 @@ function updateButtonState() {
 }
 
 
+function getDictionaryWord(word) {
+    return word
+        .replace(/^\((en|ett)\)\s+/i, "")
+        .replace(/^(en|ett)\s+/i, "")
+        .trim();
+}
+
+
 function renderSelected() {
     selectedWords.innerHTML = "";
 
@@ -400,11 +426,17 @@ function renderSelected() {
         button.addEventListener(
             "click",
             () => {
+                const dictionaryWord =
+                    getDictionaryWord(item.word);
+
                 const url =
                     "https://svenska.se/?activeTab=alla&q=" +
-                    encodeURIComponent(item.word);
+                    encodeURIComponent(dictionaryWord);
 
-                window.open(url, "_blank");
+                window.open(
+                    url,
+                    "_blank"
+                );
             }
         );
 
@@ -611,10 +643,8 @@ fileInput.addEventListener(
             const text =
                 event.target.result;
 
-            const newWords =
+            words =
                 parseText(text);
-
-            words = newWords;
 
             const currentWordSet =
                 new Set(
@@ -628,6 +658,8 @@ fileInput.addEventListener(
                 );
 
             currentSelected = [];
+
+            fileName = file.name;
 
             saveStorage();
 
