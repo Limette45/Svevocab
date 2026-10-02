@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Swedish Word Randomizer</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        padding: 20px;
+        font-family: Arial, sans-serif;
+        background: #f5f5f5;
+        color: #222;
+    }
+
+    .container {
+        max-width: 700px;
+        margin: 0 auto;
+    }
+
+    h1 {
+        font-size: 24px;
+        margin-bottom: 20px;
+    }
+
+    button,
+    input[type="file"] {
+        font-size: 16px;
+    }
+
+    button {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 6px;
+        background: #333;
+        color: white;
+        cursor: pointer;
+    }
+
+    button:disabled {
+        background: #aaa;
+        cursor: default;
+    }
+
+    #randomButton {
+        margin-bottom: 20px;
+    }
+
+    .word-list {
+        background: white;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 25px;
+    }
+
+    .word-row {
+        padding: 8px 0;
+        font-size: 18px;
+        line-height: 1.5;
+        border-bottom: 1px solid #eee;
+    }
+
+    .word-row:last-child {
+        border-bottom: none;
+    }
+
+    .swedish-word {
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .swedish-word:hover {
+        text-decoration: underline;
+    }
+
+    .selected-section {
+        margin-top: 25px;
+    }
+
+    .selected-section h2 {
+        font-size: 19px;
+        margin-bottom: 10px;
+    }
+
+    #selectedWords {
+        white-space: pre-wrap;
+        background: white;
+        border-radius: 8px;
+        padding: 15px;
+        font-size: 18px;
+        line-height: 1.6;
+        min-height: 40px;
+    }
+
+    #copyButton {
+        margin-top: 10px;
+    }
+
+    .file-section {
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 1px solid #ccc;
+    }
+
+    .file-section label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 15px;
+    }
+
+    #status {
+        margin-top: 12px;
+        font-size: 14px;
+        color: #666;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Swedish Word Randomizer</h1>
+
+    <button id="randomButton">Random 10</button>
+
+    <div id="wordList" class="word-list"></div>
+
+    <div class="selected-section">
+        <h2>Selected words</h2>
+
+        <div id="selectedWords"></div>
+
+        <button id="copyButton">Copy</button>
+    </div>
+
+    <div class="file-section">
+        <label for="fileInput">Select TXT file</label>
+        <input type="file" id="fileInput" accept=".txt">
+        <div id="status"></div>
+    </div>
+
+</div>
+
+<script>
+const STORAGE_KEY_WORDS = "swedishWordRandomizer_7f3a9c_words";
+const STORAGE_KEY_USED = "swedishWordRandomizer_7f3a9c_used";
+
+let words = [];
+let usedWords = [];
+let currentSelected = [];
+
+const fileInput = document.getElementById("fileInput");
+const randomButton = document.getElementById("randomButton");
+const copyButton = document.getElementById("copyButton");
+const wordList = document.getElementById("wordList");
+const selectedWords = document.getElementById("selectedWords");
+const status = document.getElementById("status");
+
+function loadStorage() {
+    try {
+        const savedWords = localStorage.getItem(STORAGE_KEY_WORDS);
+        const savedUsed = localStorage.getItem(STORAGE_KEY_USED);
+
+        if (savedWords) {
+            words = JSON.parse(savedWords);
+        }
+
+        if (savedUsed) {
+            usedWords = JSON.parse(savedUsed);
+        }
+    } catch {
+        words = [];
+        usedWords = [];
+    }
+}
+
+function saveStorage() {
+    localStorage.setItem(STORAGE_KEY_WORDS, JSON.stringify(words));
+    localStorage.setItem(STORAGE_KEY_USED, JSON.stringify(usedWords));
+}
+
+function normalizeLine(line) {
+    line = line.trim();
+
+    if (!line) {
+        return null;
+    }
+
+    const match = line.match(/^(\S+)\s+(.+)$/);
+
+    if (!match) {
+        return {
+            word: line,
+            meaning: ""
+        };
+    }
+
+    const word = match[1];
+    const meaning = match[2].trim();
+
+    return {
+        word: word,
+        meaning: meaning
+    };
+}
+
+function formatLine(item) {
+    if (!item.meaning) {
+        return item.word;
+    }
+
+    return item.word + "     " + item.meaning;
+}
+
+function parseText(text) {
+    const lines = text.split(/\r?\n/);
+    const result = [];
+
+    for (const line of lines) {
+        const item = normalizeLine(line);
+
+        if (item && item.word) {
+            result.push(item);
+        }
+    }
+
+    return result;
+}
+
+function getUsedWordSet() {
+    return new Set(usedWords);
+}
+
+function updateButtonState() {
+    const usedSet = getUsedWordSet();
+    const remaining = words.filter(item => !usedSet.has(item.word));
+
+    randomButton.disabled = remaining.length === 0;
+
+    if (words.length === 0) {
+        status.textContent = "Select a TXT file below.";
+    } else if (remaining.length === 0) {
+        status.textContent = "All words have been selected.";
+    } else {
+        status.textContent = remaining.length + " words remaining.";
+    }
+}
+
+function renderSelected() {
+    selectedWords.textContent = currentSelected
+        .map(item => item.word)
+        .join("\n");
+}
+
+function speakWord(word) {
+    if (!("speechSynthesis" in window)) {
+        return;
+    }
+
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(word);
+    utterance.lang = "sv-SE";
+    utterance.rate = 0.9;
+
+    window.speechSynthesis.speak(utterance);
+}
+
+function renderResults() {
+    wordList.innerHTML = "";
+
+    currentSelected.forEach(item => {
+        const row = document.createElement("div");
+        row.className = "word-row";
+
+        const word = document.createElement("span");
+        word.className = "swedish-word";
+        word.textContent = item.word;
+
+        word.addEventListener("click", () => {
+            speakWord(item.word);
+        });
+
+        const meaning = document.createTextNode(
+            item.meaning ? "     " + item.meaning : ""
+        );
+
+        row.appendChild(word);
+        row.appendChild(meaning);
+
+        wordList.appendChild(row);
+    });
+
+    renderSelected();
+}
+
+function selectRandomWords() {
+    const usedSet = getUsedWordSet();
+
+    const remaining = words.filter(item => !usedSet.has(item.word));
+
+    if (remaining.length === 0) {
+        currentSelected = [];
+        renderResults();
+        updateButtonState();
+        return;
+    }
+
+    const shuffled = [...remaining];
+
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    currentSelected = shuffled.slice(0, 10);
+
+    currentSelected.forEach(item => {
+        if (!usedSet.has(item.word)) {
+            usedWords.push(item.word);
+        }
+    });
+
+    saveStorage();
+    renderResults();
+    updateButtonState();
+}
+
+randomButton.addEventListener("click", selectRandomWords);
+
+copyButton.addEventListener("click", async () => {
+    const text = currentSelected
+        .map(item => item.word)
+        .join("\n");
+
+    if (!text) {
+        return;
+    }
+
+    try {
+        await navigator.clipboard.writeText(text);
+        copyButton.textContent = "Copied";
+
+        setTimeout(() => {
+            copyButton.textContent = "Copy";
+        }, 1000);
+    } catch {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        textarea.remove();
+
+        copyButton.textContent = "Copied";
+
+        setTimeout(() => {
+            copyButton.textContent = "Copy";
+        }, 1000);
+    }
+});
+
+fileInput.addEventListener("change", event => {
+    const file = event.target.files[0];
+
+    if (!file) {
+        return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = event => {
+        const text = event.target.result;
+        const newWords = parseText(text);
+
+        words = newWords;
+
+        const currentWordSet = new Set(words.map(item => item.word));
+
+        usedWords = usedWords.filter(word =>
+            currentWordSet.has(word)
+        );
+
+        currentSelected = [];
+
+        saveStorage();
+        renderResults();
+        updateButtonState();
+    };
+
+    reader.readAsText(file);
+});
+
+loadStorage();
+renderResults();
+updateButtonState();
+</script>
+
+</body>
+</html>
