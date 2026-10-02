@@ -154,24 +154,48 @@
 </div>
 
 <script>
-const STORAGE_KEY_WORDS = "swedishWordRandomizer_7f3a9c_words";
-const STORAGE_KEY_USED = "swedishWordRandomizer_7f3a9c_used";
+const STORAGE_KEY_WORDS =
+    "swedishWordRandomizer_7f3a9c_words";
+
+const STORAGE_KEY_USED =
+    "swedishWordRandomizer_7f3a9c_used";
+
+const STORAGE_KEY_CURRENT =
+    "swedishWordRandomizer_7f3a9c_current";
 
 let words = [];
 let usedWords = [];
 let currentSelected = [];
 
-const fileInput = document.getElementById("fileInput");
-const randomButton = document.getElementById("randomButton");
-const copyButton = document.getElementById("copyButton");
-const wordList = document.getElementById("wordList");
-const selectedWords = document.getElementById("selectedWords");
-const status = document.getElementById("status");
+const fileInput =
+    document.getElementById("fileInput");
+
+const randomButton =
+    document.getElementById("randomButton");
+
+const copyButton =
+    document.getElementById("copyButton");
+
+const wordList =
+    document.getElementById("wordList");
+
+const selectedWords =
+    document.getElementById("selectedWords");
+
+const status =
+    document.getElementById("status");
+
 
 function loadStorage() {
     try {
-        const savedWords = localStorage.getItem(STORAGE_KEY_WORDS);
-        const savedUsed = localStorage.getItem(STORAGE_KEY_USED);
+        const savedWords =
+            localStorage.getItem(STORAGE_KEY_WORDS);
+
+        const savedUsed =
+            localStorage.getItem(STORAGE_KEY_USED);
+
+        const savedCurrent =
+            localStorage.getItem(STORAGE_KEY_CURRENT);
 
         if (savedWords) {
             words = JSON.parse(savedWords);
@@ -180,11 +204,31 @@ function loadStorage() {
         if (savedUsed) {
             usedWords = JSON.parse(savedUsed);
         }
+
+        if (savedCurrent) {
+            const savedCurrentWords =
+                JSON.parse(savedCurrent);
+
+            const wordMap =
+                new Map(
+                    words.map(item => [
+                        item.word,
+                        item
+                    ])
+                );
+
+            currentSelected =
+                savedCurrentWords
+                    .map(word => wordMap.get(word))
+                    .filter(Boolean);
+        }
     } catch {
         words = [];
         usedWords = [];
+        currentSelected = [];
     }
 }
+
 
 function saveStorage() {
     localStorage.setItem(
@@ -196,27 +240,31 @@ function saveStorage() {
         STORAGE_KEY_USED,
         JSON.stringify(usedWords)
     );
+
+    localStorage.setItem(
+        STORAGE_KEY_CURRENT,
+        JSON.stringify(
+            currentSelected.map(item => item.word)
+        )
+    );
 }
 
-function normalizeSpaces(text) {
-    return text
-        .replace(/\u3000/g, " ")
-        .replace(/\t+/g, " ")
-        .replace(/ {2,}/g, " ")
-        .trim();
-}
 
 function parseLine(line) {
     line = line
         .replace(/\uFEFF/g, "")
         .replace(/\u3000/g, " ")
+        .replace(/\t+/g, " ")
         .trim();
 
     if (!line) {
         return null;
     }
 
-    const posMatch = line.match(/\((Adv|Adj|N|V|Pron|Prep|Conj|Num|Interj|Det|Part|Art)\s*$/i);
+    const posMatch =
+        line.match(
+            /\((Adv|Adj|N|V|Pron|Prep|Conj|Num|Interj|Det|Part|Art)\s*$/i
+        );
 
     if (!posMatch) {
         return {
@@ -227,11 +275,11 @@ function parseLine(line) {
 
     const posStart = posMatch.index;
 
-    let beforePos = line.slice(0, posStart).trim();
+    let beforePos =
+        line.slice(0, posStart).trim();
 
-    beforePos = beforePos.replace(/\s+$/, "");
-
-    const parts = beforePos.split(/\s+/);
+    const parts =
+        beforePos.split(/\s+/);
 
     if (parts.length < 2) {
         return {
@@ -240,18 +288,24 @@ function parseLine(line) {
         };
     }
 
-    const meaning = parts.pop();
+    const meaning =
+        parts.pop();
 
-    const word = parts.join(" ");
+    const word =
+        parts.join(" ");
 
     return {
         word: word,
-        meaning: meaning + "(" + posMatch[1]
+        meaning:
+            meaning + "(" + posMatch[1]
     };
 }
 
+
 function parseText(text) {
-    const lines = text.split(/\r?\n/);
+    const lines =
+        text.split(/\r?\n/);
+
     const result = [];
 
     for (const line of lines) {
@@ -265,42 +319,45 @@ function parseText(text) {
     return result;
 }
 
-function formatLine(item) {
-    if (!item.meaning) {
-        return item.word;
-    }
-
-    return item.word + "     " + item.meaning;
-}
 
 function getUsedWordSet() {
     return new Set(usedWords);
 }
 
+
 function updateButtonState() {
-    const usedSet = getUsedWordSet();
+    const usedSet =
+        getUsedWordSet();
 
-    const remaining = words.filter(
-        item => !usedSet.has(item.word)
-    );
+    const remaining =
+        words.filter(
+            item => !usedSet.has(item.word)
+        );
 
-    randomButton.disabled = remaining.length === 0;
+    randomButton.disabled =
+        remaining.length === 0;
 
     if (words.length === 0) {
-        status.textContent = "Select a TXT file below.";
+        status.textContent =
+            "Select a TXT file below.";
     } else if (remaining.length === 0) {
-        status.textContent = "All words have been selected.";
+        status.textContent =
+            "All words have been selected.";
     } else {
         status.textContent =
-            remaining.length + " words remaining.";
+            remaining.length +
+            " words remaining.";
     }
 }
 
+
 function renderSelected() {
-    selectedWords.textContent = currentSelected
-        .map(item => item.word)
-        .join("\n");
+    selectedWords.textContent =
+        currentSelected
+            .map(item => item.word)
+            .join("\n");
 }
+
 
 function speakWord(word) {
     if (!("speechSynthesis" in window)) {
@@ -315,23 +372,36 @@ function speakWord(word) {
     utterance.lang = "sv-SE";
     utterance.rate = 0.9;
 
-    window.speechSynthesis.speak(utterance);
+    window.speechSynthesis.speak(
+        utterance
+    );
 }
+
 
 function renderResults() {
     wordList.innerHTML = "";
 
     currentSelected.forEach(item => {
-        const row = document.createElement("div");
+        const row =
+            document.createElement("div");
+
         row.className = "word-row";
 
-        const word = document.createElement("span");
-        word.className = "swedish-word";
-        word.textContent = item.word;
+        const word =
+            document.createElement("span");
 
-        word.addEventListener("click", () => {
-            speakWord(item.word);
-        });
+        word.className =
+            "swedish-word";
+
+        word.textContent =
+            item.word;
+
+        word.addEventListener(
+            "click",
+            () => {
+                speakWord(item.word);
+            }
+        );
 
         row.appendChild(word);
 
@@ -349,31 +419,50 @@ function renderResults() {
     renderSelected();
 }
 
-function selectRandomWords() {
-    const usedSet = getUsedWordSet();
 
-    const remaining = words.filter(
-        item => !usedSet.has(item.word)
-    );
+function selectRandomWords() {
+    const usedSet =
+        getUsedWordSet();
+
+    const remaining =
+        words.filter(
+            item => !usedSet.has(item.word)
+        );
 
     if (remaining.length === 0) {
         currentSelected = [];
+
+        saveStorage();
         renderResults();
         updateButtonState();
+
         return;
     }
 
-    const shuffled = [...remaining];
+    const shuffled =
+        [...remaining];
 
-    for (let i = shuffled.length - 1; i > 0; i--) {
+    for (
+        let i = shuffled.length - 1;
+        i > 0;
+        i--
+    ) {
         const j =
-            Math.floor(Math.random() * (i + 1));
+            Math.floor(
+                Math.random() * (i + 1)
+            );
 
-        [shuffled[i], shuffled[j]] =
-            [shuffled[j], shuffled[i]];
+        [
+            shuffled[i],
+            shuffled[j]
+        ] = [
+            shuffled[j],
+            shuffled[i]
+        ];
     }
 
-    currentSelected = shuffled.slice(0, 10);
+    currentSelected =
+        shuffled.slice(0, 10);
 
     currentSelected.forEach(item => {
         if (!usedSet.has(item.word)) {
@@ -382,41 +471,52 @@ function selectRandomWords() {
     });
 
     saveStorage();
+
     renderResults();
     updateButtonState();
 }
+
 
 randomButton.addEventListener(
     "click",
     selectRandomWords
 );
 
+
 copyButton.addEventListener(
     "click",
     async () => {
-        const text = currentSelected
-            .map(item => item.word)
-            .join("\n");
+        const text =
+            currentSelected
+                .map(item => item.word)
+                .join("\n");
 
         if (!text) {
             return;
         }
 
         try {
-            await navigator.clipboard.writeText(text);
+            await navigator.clipboard.writeText(
+                text
+            );
 
-            copyButton.textContent = "Copied";
+            copyButton.textContent =
+                "Copied";
 
             setTimeout(() => {
-                copyButton.textContent = "Copy";
+                copyButton.textContent =
+                    "Copy";
             }, 1000);
+
         } catch {
             const textarea =
                 document.createElement("textarea");
 
             textarea.value = text;
 
-            document.body.appendChild(textarea);
+            document.body.appendChild(
+                textarea
+            );
 
             textarea.select();
 
@@ -424,30 +524,37 @@ copyButton.addEventListener(
 
             textarea.remove();
 
-            copyButton.textContent = "Copied";
+            copyButton.textContent =
+                "Copied";
 
             setTimeout(() => {
-                copyButton.textContent = "Copy";
+                copyButton.textContent =
+                    "Copy";
             }, 1000);
         }
     }
 );
 
+
 fileInput.addEventListener(
     "change",
     event => {
-        const file = event.target.files[0];
+        const file =
+            event.target.files[0];
 
         if (!file) {
             return;
         }
 
-        const reader = new FileReader();
+        const reader =
+            new FileReader();
 
         reader.onload = event => {
-            const text = event.target.result;
+            const text =
+                event.target.result;
 
-            const newWords = parseText(text);
+            const newWords =
+                parseText(text);
 
             words = newWords;
 
@@ -457,13 +564,15 @@ fileInput.addEventListener(
                 );
 
             usedWords =
-                usedWords.filter(word =>
-                    currentWordSet.has(word)
+                usedWords.filter(
+                    word =>
+                        currentWordSet.has(word)
                 );
 
             currentSelected = [];
 
             saveStorage();
+
             renderResults();
             updateButtonState();
         };
@@ -471,6 +580,7 @@ fileInput.addEventListener(
         reader.readAsText(file);
     }
 );
+
 
 loadStorage();
 renderResults();
