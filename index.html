@@ -323,21 +323,30 @@ function parseLine(line) {
     let beforePos =
         line.slice(0, posStart).trim();
 
-    const parts =
-        beforePos.split(/\s+/);
+    const separatorMatch =
+        beforePos.match(/\s{2,}/);
 
-    if (parts.length < 2) {
+    if (!separatorMatch) {
         return {
             word: beforePos,
             meaning: "(" + posMatch[1]
         };
     }
 
-    const meaning =
-        parts.pop();
+    const separatorIndex =
+        separatorMatch.index;
 
     const word =
-        parts.join(" ");
+        beforePos
+            .slice(0, separatorIndex)
+            .trim();
+
+    const meaning =
+        beforePos
+            .slice(
+                separatorIndex
+            )
+            .trim();
 
     return {
         word: word,
@@ -737,5 +746,4 @@ updateButtonState();
 </script>
 
 </body>
-</html>                
-
+</html>
