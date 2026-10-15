@@ -400,8 +400,7 @@ function parseLine(line) {
         };
     }
 
-    const posStart =
-        posMatch.index;
+    const posStart = posMatch.index;
 
     let beforePos =
         line.slice(0, posStart).trim();
@@ -686,7 +685,7 @@ function renderSaved() {
 
         if (item.meaning) {
             content.appendChild(
-                document.createTextNode("       ")
+                document.createTextNode("     ")
             );
 
             const meaning =
