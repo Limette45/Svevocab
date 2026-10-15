@@ -66,17 +66,26 @@
     }
 
     .word-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
         padding: 10px 0;
         font-size: 18px;
         line-height: 1.5;
         border-bottom: 1px solid #eee;
-        white-space: pre-wrap;
-        overflow-wrap: anywhere;
-        word-break: normal;
     }
 
     .word-row:last-child {
         border-bottom: none;
+    }
+
+    .word-content {
+        flex: 1;
+        min-width: 0;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        word-break: normal;
     }
 
     .swedish-word {
@@ -84,15 +93,36 @@
         user-select: none;
     }
 
-    .swedish-word:hover {
+    .swedish-word:hover,
+    .saved-word:hover {
         text-decoration: underline;
+    }
+
+    .word-meaning {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
+    .save-button,
+    .saved-copy-button {
+        padding: 4px 7px;
+        font-size: 12px;
+        border-radius: 4px;
+        background: #666;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .save-button.saved {
+        background: #333;
     }
 
     .selected-section {
         margin-top: 25px;
     }
 
-    .selected-section h2 {
+    .selected-section h2,
+    .saved-section h2 {
         font-size: 19px;
         margin-bottom: 10px;
     }
@@ -127,14 +157,10 @@
         align-items: center;
         gap: 5px;
         flex-shrink: 0;
-        flex-wrap: wrap;
-        justify-content: flex-end;
     }
 
     .svenska-button,
-    .wiktionary-button,
-    .save-button,
-    .saved-copy-button {
+    .wiktionary-button {
         padding: 4px 7px;
         font-size: 12px;
         border-radius: 4px;
@@ -142,17 +168,8 @@
         white-space: nowrap;
     }
 
-    .save-button.saved {
-        background: #333;
-    }
-
     .saved-section {
         margin-top: 25px;
-    }
-
-    .saved-section h2 {
-        font-size: 19px;
-        margin-bottom: 10px;
     }
 
     .saved-word-row {
@@ -180,17 +197,9 @@
         user-select: none;
     }
 
-    .saved-word:hover {
-        text-decoration: underline;
-    }
-
     .saved-meaning {
         white-space: pre-wrap;
         overflow-wrap: anywhere;
-    }
-
-    #savedWords {
-        padding: 12px 16px;
     }
 
     .file-section {
@@ -422,16 +431,13 @@ function parseLine(line) {
 
     return {
         word: word,
-        meaning:
-            meaning + "(" + posMatch[1]
+        meaning: meaning + "(" + posMatch[1]
     };
 }
 
 
 function parseText(text) {
-    const lines =
-        text.split(/\r?\n/);
-
+    const lines = text.split(/\r?\n/);
     const result = [];
 
     for (const line of lines) {
@@ -452,13 +458,11 @@ function getUsedWordSet() {
 
 
 function updateButtonState() {
-    const usedSet =
-        getUsedWordSet();
+    const usedSet = getUsedWordSet();
 
-    const remaining =
-        words.filter(
-            item => !usedSet.has(item.word)
-        );
+    const remaining = words.filter(
+        item => !usedSet.has(item.word)
+    );
 
     randomButton.disabled =
         remaining.length === 0;
@@ -475,18 +479,14 @@ function updateButtonState() {
 
     const percentage =
         total > 0
-            ? (completed / total * 100).toFixed(1).replace(/\.0$/, "")
+            ? (completed / total * 100)
+                .toFixed(1)
+                .replace(/\.0$/, "")
             : "0";
 
     if (words.length === 0) {
         status.textContent =
             "Select a TXT file below.";
-    } else if (remaining.length === 0) {
-        status.textContent =
-            remaining.length +
-            " words remaining. " +
-            percentage +
-            "% completed";
     } else {
         status.textContent =
             remaining.length +
@@ -506,37 +506,31 @@ function getDictionaryWord(word) {
 
 
 function openSvenska(word) {
-    const dictionaryWord =
-        getDictionaryWord(word);
+    const dictionaryWord = getDictionaryWord(word);
 
     const url =
         "https://svenska.se/?activeTab=alla&q=" +
         encodeURIComponent(dictionaryWord);
 
-    window.open(
-        url,
-        "_blank"
-    );
+    window.open(url, "_blank");
 }
 
 
 function openWiktionary(word) {
-    const dictionaryWord =
-        getDictionaryWord(word);
+    const dictionaryWord = getDictionaryWord(word);
 
     const url =
         "https://en.wiktionary.org/wiki/" +
         encodeURIComponent(dictionaryWord);
 
-    window.open(
-        url,
-        "_blank"
-    );
+    window.open(url, "_blank");
 }
 
 
 function speakWord(word) {
     if (!("speechSynthesis" in window)) {
+        status.textContent =
+            "Speech synthesis is not supported by this browser.";
         return;
     }
 
@@ -548,9 +542,12 @@ function speakWord(word) {
     utterance.lang = "sv-SE";
     utterance.rate = 0.9;
 
-    window.speechSynthesis.speak(
-        utterance
-    );
+    utterance.onerror = () => {
+        status.textContent =
+            "Unable to play audio. Check your browser's speech settings.";
+    };
+
+    window.speechSynthesis.speak(utterance);
 }
 
 
@@ -563,10 +560,9 @@ function isSaved(word) {
 
 function toggleSaved(item) {
     if (isSaved(item.word)) {
-        savedWords =
-            savedWords.filter(
-                saved => saved.word !== item.word
-            );
+        savedWords = savedWords.filter(
+            saved => saved.word !== item.word
+        );
     } else {
         savedWords.push({
             word: item.word,
@@ -575,8 +571,36 @@ function toggleSaved(item) {
     }
 
     saveStorage();
-    renderSelected();
-    renderSaved();
+    renderResults();
+}
+
+
+function createSaveButton(item) {
+    const saveButton =
+        document.createElement("button");
+
+    saveButton.className = "save-button";
+
+    function updateLabel() {
+        const saved = isSaved(item.word);
+
+        saveButton.textContent =
+            saved ? "Unsave" : "Save";
+
+        saveButton.classList.toggle(
+            "saved",
+            saved
+        );
+    }
+
+    updateLabel();
+
+    saveButton.addEventListener(
+        "click",
+        () => toggleSaved(item)
+    );
+
+    return saveButton;
 }
 
 
@@ -587,32 +611,24 @@ function renderSelected() {
         const row =
             document.createElement("div");
 
-        row.className =
-            "selected-word-row";
+        row.className = "selected-word-row";
 
         const word =
             document.createElement("span");
 
-        word.className =
-            "selected-word";
-
-        word.textContent =
-            item.word;
+        word.className = "selected-word";
+        word.textContent = item.word;
 
         const buttons =
             document.createElement("div");
 
-        buttons.className =
-            "dictionary-buttons";
+        buttons.className = "dictionary-buttons";
 
         const svenskaButton =
             document.createElement("button");
 
-        svenskaButton.className =
-            "svenska-button";
-
-        svenskaButton.textContent =
-            "Svenska.se";
+        svenskaButton.className = "svenska-button";
+        svenskaButton.textContent = "Svenska.se";
 
         svenskaButton.addEventListener(
             "click",
@@ -622,41 +638,16 @@ function renderSelected() {
         const wiktionaryButton =
             document.createElement("button");
 
-        wiktionaryButton.className =
-            "wiktionary-button";
-
-        wiktionaryButton.textContent =
-            "Wiktionary";
+        wiktionaryButton.className = "wiktionary-button";
+        wiktionaryButton.textContent = "Wiktionary";
 
         wiktionaryButton.addEventListener(
             "click",
             () => openWiktionary(item.word)
         );
 
-        const saveButton =
-            document.createElement("button");
-
-        saveButton.className =
-            "save-button";
-
-        const saved =
-            isSaved(item.word);
-
-        saveButton.textContent =
-            saved ? "Unsave" : "Save";
-
-        if (saved) {
-            saveButton.classList.add("saved");
-        }
-
-        saveButton.addEventListener(
-            "click",
-            () => toggleSaved(item)
-        );
-
         buttons.appendChild(svenskaButton);
         buttons.appendChild(wiktionaryButton);
-        buttons.appendChild(saveButton);
 
         row.appendChild(word);
         row.appendChild(buttons);
@@ -673,23 +664,18 @@ function renderSaved() {
         const row =
             document.createElement("div");
 
-        row.className =
-            "saved-word-row";
+        row.className = "saved-word-row";
 
         const content =
             document.createElement("div");
 
-        content.className =
-            "saved-word-content";
+        content.className = "saved-word-content";
 
         const word =
             document.createElement("span");
 
-        word.className =
-            "saved-word";
-
-        word.textContent =
-            item.word;
+        word.className = "saved-word";
+        word.textContent = item.word;
 
         word.addEventListener(
             "click",
@@ -706,11 +692,8 @@ function renderSaved() {
             const meaning =
                 document.createElement("span");
 
-            meaning.className =
-                "saved-meaning";
-
-            meaning.textContent =
-                item.meaning;
+            meaning.className = "saved-meaning";
+            meaning.textContent = item.meaning;
 
             content.appendChild(meaning);
         }
@@ -718,11 +701,8 @@ function renderSaved() {
         const copyButton =
             document.createElement("button");
 
-        copyButton.className =
-            "saved-copy-button";
-
-        copyButton.textContent =
-            "Copy";
+        copyButton.className = "saved-copy-button";
+        copyButton.textContent = "Copy";
 
         copyButton.addEventListener(
             "click",
@@ -766,27 +746,42 @@ function renderResults() {
         const row =
             document.createElement("div");
 
-        row.className =
-            "word-row";
+        row.className = "word-row";
+
+        const content =
+            document.createElement("div");
+
+        content.className = "word-content";
 
         const word =
             document.createElement("span");
 
-        word.className =
-            "swedish-word";
+        word.className = "swedish-word";
+        word.textContent = item.word;
 
-        word.textContent =
-            item.word;
+        word.addEventListener(
+            "click",
+            () => speakWord(item.word)
+        );
 
-        row.appendChild(word);
+        content.appendChild(word);
 
         if (item.meaning) {
-            row.appendChild(
-                document.createTextNode(
-                    "       " + item.meaning
-                )
+            content.appendChild(
+                document.createTextNode("       ")
             );
+
+            const meaning =
+                document.createElement("span");
+
+            meaning.className = "word-meaning";
+            meaning.textContent = item.meaning;
+
+            content.appendChild(meaning);
         }
+
+        row.appendChild(content);
+        row.appendChild(createSaveButton(item));
 
         wordList.appendChild(row);
     });
@@ -797,13 +792,11 @@ function renderResults() {
 
 
 function selectRandomWords() {
-    const usedSet =
-        getUsedWordSet();
+    const usedSet = getUsedWordSet();
 
-    const remaining =
-        words.filter(
-            item => !usedSet.has(item.word)
-        );
+    const remaining = words.filter(
+        item => !usedSet.has(item.word)
+    );
 
     if (remaining.length === 0) {
         currentSelected = [];
@@ -815,30 +808,17 @@ function selectRandomWords() {
         return;
     }
 
-    const shuffled =
-        [...remaining];
+    const shuffled = [...remaining];
 
-    for (
-        let i = shuffled.length - 1;
-        i > 0;
-        i--
-    ) {
+    for (let i = shuffled.length - 1; i > 0; i--) {
         const j =
-            Math.floor(
-                Math.random() * (i + 1)
-            );
+            Math.floor(Math.random() * (i + 1));
 
-        [
-            shuffled[i],
-            shuffled[j]
-        ] = [
-            shuffled[j],
-            shuffled[i]
-        ];
+        [shuffled[i], shuffled[j]] =
+            [shuffled[j], shuffled[i]];
     }
 
-    currentSelected =
-        shuffled.slice(0, 10);
+    currentSelected = shuffled.slice(0, 10);
 
     currentSelected.forEach(item => {
         if (!usedSet.has(item.word)) {
@@ -862,38 +842,28 @@ randomButton.addEventListener(
 fileInput.addEventListener(
     "change",
     event => {
-        const file =
-            event.target.files[0];
+        const file = event.target.files[0];
 
         if (!file) {
             return;
         }
 
-        const reader =
-            new FileReader();
+        const reader = new FileReader();
 
         reader.onload = event => {
-            const text =
-                event.target.result;
+            const text = event.target.result;
 
-            words =
-                parseText(text);
+            words = parseText(text);
 
             const currentWordSet =
-                new Set(
-                    words.map(item => item.word)
-                );
+                new Set(words.map(item => item.word));
 
-            usedWords =
-                usedWords.filter(
-                    word =>
-                        currentWordSet.has(word)
-                );
+            usedWords = usedWords.filter(
+                word => currentWordSet.has(word)
+            );
 
             currentSelected = [];
-
             savedWords = [];
-
             fileName = file.name;
 
             saveStorage();
