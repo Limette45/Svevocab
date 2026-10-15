@@ -615,8 +615,6 @@ function openWiktionary(word) {
 
 function speakWord(word) {
     if (!("speechSynthesis" in window)) {
-        status.textContent =
-            "Speech synthesis is not supported by this browser.";
         return;
     }
 
@@ -627,11 +625,6 @@ function speakWord(word) {
 
     utterance.lang = "sv-SE";
     utterance.rate = 0.9;
-
-    utterance.onerror = () => {
-        status.textContent =
-            "Unable to play audio. Check your browser's speech settings.";
-    };
 
     window.speechSynthesis.speak(utterance);
 }
