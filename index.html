@@ -93,8 +93,7 @@
         user-select: none;
     }
 
-    .swedish-word:hover,
-    .saved-word:hover {
+    .swedish-word:hover {
         text-decoration: underline;
     }
 
@@ -190,11 +189,6 @@
         min-width: 0;
         overflow-wrap: anywhere;
         word-break: normal;
-    }
-
-    .saved-word {
-        cursor: pointer;
-        user-select: none;
     }
 
     .saved-meaning {
@@ -406,7 +400,7 @@ function parseLine(line) {
 
     const posStart = posMatch.index;
 
-    let beforePos =
+    const beforePos =
         line.slice(0, posStart).trim();
 
     const separatorMatch =
@@ -673,13 +667,7 @@ function renderSaved() {
         const word =
             document.createElement("span");
 
-        word.className = "saved-word";
         word.textContent = item.word;
-
-        word.addEventListener(
-            "click",
-            () => speakWord(item.word)
-        );
 
         content.appendChild(word);
 
@@ -688,7 +676,7 @@ function renderSaved() {
                 document.createElement("span");
 
             spacer.className = "saved-spacer";
-            spacer.textContent = "       ";
+            spacer.textContent = "        ";
 
             content.appendChild(spacer);
 
