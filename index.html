@@ -202,6 +202,10 @@
         overflow-wrap: anywhere;
     }
 
+    .saved-spacer {
+        white-space: pre;
+    }
+
     .file-section {
         margin-top: 40px;
         padding-top: 20px;
@@ -580,19 +584,15 @@ function createSaveButton(item) {
 
     saveButton.className = "save-button";
 
-    function updateLabel() {
-        const saved = isSaved(item.word);
+    const saved = isSaved(item.word);
 
-        saveButton.textContent =
-            saved ? "Unsave" : "Save";
+    saveButton.textContent =
+        saved ? "Unsave" : "Save";
 
-        saveButton.classList.toggle(
-            "saved",
-            saved
-        );
-    }
-
-    updateLabel();
+    saveButton.classList.toggle(
+        "saved",
+        saved
+    );
 
     saveButton.addEventListener(
         "click",
@@ -684,9 +684,13 @@ function renderSaved() {
         content.appendChild(word);
 
         if (item.meaning) {
-            content.appendChild(
-                document.createTextNode("     ")
-            );
+            const spacer =
+                document.createElement("span");
+
+            spacer.className = "saved-spacer";
+            spacer.textContent = "     ";
+
+            content.appendChild(spacer);
 
             const meaning =
                 document.createElement("span");
