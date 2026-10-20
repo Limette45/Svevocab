@@ -927,15 +927,9 @@ fileInput.addEventListener(
 
             words = parseText(text);
 
-            const currentWordSet =
-                new Set(words.map(item => item.word));
-
-            usedWords = usedWords.filter(
-                word => currentWordSet.has(word)
-            );
+            usedWords = [];
 
             currentSelected = [];
-            savedWords = [];
             fileName = file.name;
 
             saveStorage();
