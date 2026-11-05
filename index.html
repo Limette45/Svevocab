@@ -71,8 +71,33 @@
         font-weight: 500;
     }
 
-    #randomButton {
+    .button-row {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
         margin-bottom: 22px;
+    }
+
+    #hideButton {
+        padding: 12px 18px;
+        font-size: 16px;
+        background: #64748b;
+    }
+
+    #hideButton:hover:not(:disabled) {
+        background: #475569;
+    }
+
+    #hideButton.locked {
+        background: #dc2626;
+    }
+
+    #hideButton.locked:hover:not(:disabled) {
+        background: #b91c1c;
+    }
+
+    #randomButton {
         padding: 12px 22px;
         font-size: 16px;
     }
@@ -127,6 +152,10 @@
         white-space: pre-wrap;
         overflow-wrap: anywhere;
         color: #475569;
+    }
+
+    .word-meaning.hidden {
+        visibility: hidden;
     }
 
     .save-button,
@@ -312,7 +341,10 @@
 
     <div id="wordList" class="word-list"></div>
 
-    <button id="randomButton">Random 10</button>
+    <div class="button-row">
+        <button id="hideButton">Hide</button>
+        <button id="randomButton">Random 10</button>
+    </div>
 
     <div class="selected-section">
         <h2>Selected words</h2>
@@ -353,11 +385,18 @@ let currentSelected = [];
 let savedWords = [];
 let fileName = "";
 
+let hideLocked = false;
+let lastHidePress = 0;
+const DOUBLE_PRESS_MS = 280;
+
 const fileInput =
     document.getElementById("fileInput");
 
 const randomButton =
     document.getElementById("randomButton");
+
+const hideButton =
+    document.getElementById("hideButton");
 
 const wordList =
     document.getElementById("wordList");
@@ -678,6 +717,25 @@ function createSaveButton(item) {
 }
 
 
+function setAllMeaningsHidden(hidden) {
+    const meanings = wordList.querySelectorAll(".word-meaning");
+    meanings.forEach(el => {
+        el.classList.toggle("hidden", hidden);
+    });
+}
+
+
+function updateHideButton() {
+    if (hideLocked) {
+        hideButton.textContent = "Show";
+        hideButton.classList.add("locked");
+    } else {
+        hideButton.textContent = "Hide";
+        hideButton.classList.remove("locked");
+    }
+}
+
+
 function renderSelected() {
     selectedWords.innerHTML = "";
 
@@ -849,6 +907,10 @@ function renderResults() {
             meaning.className = "word-meaning";
             meaning.textContent = item.meaning;
 
+            if (hideLocked) {
+                meaning.classList.add("hidden");
+            }
+
             content.appendChild(meaning);
         }
 
@@ -860,6 +922,7 @@ function renderResults() {
 
     renderSelected();
     renderSaved();
+    updateHideButton();
 }
 
 
@@ -898,6 +961,9 @@ function selectRandomWords() {
         }
     });
 
+    // Reset hide lock when new random words are selected
+    hideLocked = false;
+
     saveStorage();
 
     renderResults();
@@ -909,6 +975,50 @@ randomButton.addEventListener(
     "click",
     selectRandomWords
 );
+
+
+// Hide button: press-and-hold to hide ALL meanings; double-tap to lock hide
+function onHidePointerDown(e) {
+    e.preventDefault();
+
+    if (hideLocked) {
+        // Unlock on press when locked
+        hideLocked = false;
+        setAllMeaningsHidden(false);
+        updateHideButton();
+        lastHidePress = 0;
+        return;
+    }
+
+    // Hide all meanings immediately
+    setAllMeaningsHidden(true);
+
+    const now = Date.now();
+    if (now - lastHidePress < DOUBLE_PRESS_MS) {
+        // Double press: lock it
+        hideLocked = true;
+        updateHideButton();
+    }
+    lastHidePress = now;
+}
+
+
+function onHidePointerUp(e) {
+    e.preventDefault();
+
+    if (!hideLocked) {
+        setAllMeaningsHidden(false);
+    }
+}
+
+
+hideButton.addEventListener("pointerdown", onHidePointerDown);
+hideButton.addEventListener("pointerup", onHidePointerUp);
+hideButton.addEventListener("pointerleave", onHidePointerUp);
+hideButton.addEventListener("pointercancel", onHidePointerUp);
+
+// Prevent context menu / selection on long press
+hideButton.addEventListener("contextmenu", e => e.preventDefault());
 
 
 fileInput.addEventListener(
@@ -931,6 +1041,8 @@ fileInput.addEventListener(
 
             currentSelected = [];
             fileName = file.name;
+
+            hideLocked = false;
 
             saveStorage();
 
