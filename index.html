@@ -102,24 +102,6 @@
         font-size: 16px;
     }
 
-    #modeButton {
-        padding: 12px 18px;
-        font-size: 16px;
-        background: #0d9488;
-    }
-
-    #modeButton:hover:not(:disabled) {
-        background: #0f766e;
-    }
-
-    #modeButton.sentence-mode {
-        background: #7c3aed;
-    }
-
-    #modeButton.sentence-mode:hover:not(:disabled) {
-        background: #6d28d9;
-    }
-
     .word-list {
         background: #ffffff;
         border-radius: 12px;
@@ -361,7 +343,6 @@
 
     <div class="button-row">
         <button id="hideButton">Hide</button>
-        <button id="modeButton">Show Sentence</button>
         <button id="randomButton">Random 10</button>
     </div>
 
@@ -408,8 +389,6 @@ let hideLocked = false;
 let lastHidePress = 0;
 const DOUBLE_PRESS_MS = 280;
 
-let displayMode = "word"; // "word" or "sentence"
-
 const fileInput =
     document.getElementById("fileInput");
 
@@ -418,9 +397,6 @@ const randomButton =
 
 const hideButton =
     document.getElementById("hideButton");
-
-const modeButton =
-    document.getElementById("modeButton");
 
 const wordList =
     document.getElementById("wordList");
@@ -587,34 +563,13 @@ function parseLine(line) {
 function parseText(text) {
     const lines = text.split(/\r?\n/);
     const result = [];
-    let i = 0;
 
-    while (i < lines.length) {
-        const raw = lines[i];
-        const item = parseLine(raw);
+    for (const line of lines) {
+        const item = parseLine(line);
 
         if (item && item.word) {
-            // Look ahead for an example sentence (next non-empty line that is not a vocab entry)
-            let sentence = "";
-            let j = i + 1;
-            while (j < lines.length && !lines[j].trim()) {
-                j++;
-            }
-            if (j < lines.length) {
-                const nextRaw = lines[j];
-                const nextItem = parseLine(nextRaw);
-                // Treat as sentence if it does not look like a proper vocab line with POS tag
-                const looksLikeVocab = nextItem && nextItem.word &&
-                    /\((Adv|Adj|N|V|Pron|Prep|Conj|Num|Interj|Det|Part|Art)\s*$/i.test(nextRaw.trim());
-                if (!looksLikeVocab && nextRaw.trim()) {
-                    sentence = nextRaw.trim();
-                    i = j; // consume the sentence line
-                }
-            }
-            item.sentence = sentence || "";
             result.push(item);
         }
-        i++;
     }
 
     return result;
@@ -762,47 +717,6 @@ function createSaveButton(item) {
 }
 
 
-function createCopyButton(item) {
-    const copyButton =
-        document.createElement("button");
-
-    copyButton.className = "saved-copy-button";
-    copyButton.textContent = "Copy";
-
-    copyButton.addEventListener(
-        "click",
-        async () => {
-            const textToCopy =
-                item.sentence || item.word || "";
-
-            try {
-                await navigator.clipboard.writeText(
-                    textToCopy
-                );
-            } catch {
-                const textarea =
-                    document.createElement("textarea");
-
-                textarea.value = textToCopy;
-
-                document.body.appendChild(textarea);
-                textarea.select();
-                document.execCommand("copy");
-                textarea.remove();
-            }
-
-            copyButton.textContent = "Copied";
-
-            setTimeout(() => {
-                copyButton.textContent = "Copy";
-            }, 1000);
-        }
-    );
-
-    return copyButton;
-}
-
-
 function setAllMeaningsHidden(hidden) {
     const meanings = wordList.querySelectorAll(".word-meaning");
     meanings.forEach(el => {
@@ -818,17 +732,6 @@ function updateHideButton() {
     } else {
         hideButton.textContent = "Hide";
         hideButton.classList.remove("locked");
-    }
-}
-
-
-function updateModeButton() {
-    if (displayMode === "sentence") {
-        modeButton.textContent = "Show Word";
-        modeButton.classList.add("sentence-mode");
-    } else {
-        modeButton.textContent = "Show Sentence";
-        modeButton.classList.remove("sentence-mode");
     }
 }
 
@@ -980,63 +883,39 @@ function renderResults() {
 
         content.className = "word-content";
 
-        if (displayMode === "sentence") {
-            // Show the example sentence for the word
-            const sentenceSpan =
-                document.createElement("span");
+        const word =
+            document.createElement("span");
 
-            sentenceSpan.className = "swedish-word";
-            sentenceSpan.textContent =
-                item.sentence || "(no example sentence)";
+        word.className = "swedish-word";
+        word.textContent = item.word;
 
-            sentenceSpan.addEventListener(
-                "click",
-                () => speakWord(item.sentence || item.word)
+        word.addEventListener(
+            "click",
+            () => speakWord(item.word)
+        );
+
+        content.appendChild(word);
+
+        if (item.meaning) {
+            content.appendChild(
+                document.createTextNode("       ")
             );
 
-            content.appendChild(sentenceSpan);
-        } else {
-            // Default: show Swedish word + meaning
-            const word =
+            const meaning =
                 document.createElement("span");
 
-            word.className = "swedish-word";
-            word.textContent = item.word;
+            meaning.className = "word-meaning";
+            meaning.textContent = item.meaning;
 
-            word.addEventListener(
-                "click",
-                () => speakWord(item.word)
-            );
-
-            content.appendChild(word);
-
-            if (item.meaning) {
-                content.appendChild(
-                    document.createTextNode("       ")
-                );
-
-                const meaning =
-                    document.createElement("span");
-
-                meaning.className = "word-meaning";
-                meaning.textContent = item.meaning;
-
-                if (hideLocked) {
-                    meaning.classList.add("hidden");
-                }
-
-                content.appendChild(meaning);
+            if (hideLocked) {
+                meaning.classList.add("hidden");
             }
+
+            content.appendChild(meaning);
         }
 
         row.appendChild(content);
-
-        // In sentence mode show Copy button; otherwise show Save button
-        if (displayMode === "sentence") {
-            row.appendChild(createCopyButton(item));
-        } else {
-            row.appendChild(createSaveButton(item));
-        }
+        row.appendChild(createSaveButton(item));
 
         wordList.appendChild(row);
     });
@@ -1044,7 +923,6 @@ function renderResults() {
     renderSelected();
     renderSaved();
     updateHideButton();
-    updateModeButton();
 }
 
 
@@ -1096,22 +974,6 @@ function selectRandomWords() {
 randomButton.addEventListener(
     "click",
     selectRandomWords
-);
-
-
-modeButton.addEventListener(
-    "click",
-    () => {
-        displayMode =
-            displayMode === "word" ? "sentence" : "word";
-        // When switching to sentence mode, unlock hide so meanings are not relevant
-        if (displayMode === "sentence") {
-            hideLocked = false;
-        }
-        renderResults();
-        // Automatically scroll/swipe to the top after switching word/sentence
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    }
 );
 
 
