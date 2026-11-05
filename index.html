@@ -762,6 +762,47 @@ function createSaveButton(item) {
 }
 
 
+function createCopyButton(item) {
+    const copyButton =
+        document.createElement("button");
+
+    copyButton.className = "saved-copy-button";
+    copyButton.textContent = "Copy";
+
+    copyButton.addEventListener(
+        "click",
+        async () => {
+            const textToCopy =
+                item.sentence || item.word || "";
+
+            try {
+                await navigator.clipboard.writeText(
+                    textToCopy
+                );
+            } catch {
+                const textarea =
+                    document.createElement("textarea");
+
+                textarea.value = textToCopy;
+
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand("copy");
+                textarea.remove();
+            }
+
+            copyButton.textContent = "Copied";
+
+            setTimeout(() => {
+                copyButton.textContent = "Copy";
+            }, 1000);
+        }
+    );
+
+    return copyButton;
+}
+
+
 function setAllMeaningsHidden(hidden) {
     const meanings = wordList.querySelectorAll(".word-meaning");
     meanings.forEach(el => {
@@ -989,7 +1030,13 @@ function renderResults() {
         }
 
         row.appendChild(content);
-        row.appendChild(createSaveButton(item));
+
+        // In sentence mode show Copy button; otherwise show Save button
+        if (displayMode === "sentence") {
+            row.appendChild(createCopyButton(item));
+        } else {
+            row.appendChild(createSaveButton(item));
+        }
 
         wordList.appendChild(row);
     });
