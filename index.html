@@ -159,7 +159,9 @@
     }
 
     .save-button,
-    .saved-copy-button {
+    .saved-copy-button,
+    .saved-delete-button,
+    .copy-all-saved-button {
         padding: 5px 12px;
         font-size: 13px;
         font-weight: 500;
@@ -194,16 +196,51 @@
         color: #1e293b;
     }
 
+    .saved-delete-button {
+        background: #fef2f2;
+        color: #ef4444;
+    }
+
+    .saved-delete-button:hover {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .saved-delete-button.confirming {
+        background: #dc2626;
+        color: #ffffff;
+    }
+
+    .saved-delete-button.confirming:hover {
+        background: #b91c1c;
+    }
+
+    .copy-all-saved-button {
+        background: #e0e7ff;
+        color: #3730a3;
+    }
+
+    .copy-all-saved-button:hover {
+        background: #c7d2fe;
+    }
+
     .selected-section {
         margin-top: 28px;
     }
 
     .selected-section h2,
-    .saved-section h2 {
+    .saved-header h2 {
         font-size: 18px;
         font-weight: 600;
-        margin: 0 0 10px 0;
+        margin: 0;
         color: #1e293b;
+    }
+
+    .saved-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
     }
 
     #selectedWords,
@@ -236,6 +273,13 @@
     }
 
     .dictionary-buttons {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    .saved-action-buttons {
         display: flex;
         align-items: center;
         gap: 6px;
@@ -352,7 +396,10 @@
     </div>
 
     <div class="saved-section">
-        <h2>Saved words</h2>
+        <div class="saved-header">
+            <h2>Saved words</h2>
+            <button id="copyAllSavedButton" class="copy-all-saved-button">Copy All Saved</button>
+        </div>
         <div id="savedWords"></div>
     </div>
 
@@ -406,6 +453,9 @@ const selectedWords =
 
 const savedWordsContainer =
     document.getElementById("savedWords");
+
+const copyAllSavedButton =
+    document.getElementById("copyAllSavedButton");
 
 const status =
     document.getElementById("status");
@@ -789,6 +839,20 @@ function renderSelected() {
 }
 
 
+async function copyToClipboard(text) {
+    try {
+        await navigator.clipboard.writeText(text);
+    } catch {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        textarea.remove();
+    }
+}
+
+
 function renderSaved() {
     savedWordsContainer.innerHTML = "";
 
@@ -828,6 +892,11 @@ function renderSaved() {
             content.appendChild(meaning);
         }
 
+        const actionButtons =
+            document.createElement("div");
+
+        actionButtons.className = "saved-action-buttons";
+
         const copyButton =
             document.createElement("button");
 
@@ -837,22 +906,7 @@ function renderSaved() {
         copyButton.addEventListener(
             "click",
             async () => {
-                try {
-                    await navigator.clipboard.writeText(
-                        item.word
-                    );
-                } catch {
-                    const textarea =
-                        document.createElement("textarea");
-
-                    textarea.value = item.word;
-
-                    document.body.appendChild(textarea);
-                    textarea.select();
-                    document.execCommand("copy");
-                    textarea.remove();
-                }
-
+                await copyToClipboard(item.word);
                 copyButton.textContent = "Copied";
 
                 setTimeout(() => {
@@ -861,12 +915,65 @@ function renderSaved() {
             }
         );
 
+        const deleteButton =
+            document.createElement("button");
+
+        deleteButton.className = "saved-delete-button";
+        deleteButton.textContent = "Delete";
+
+        let confirmTimeout = null;
+
+        deleteButton.addEventListener(
+            "click",
+            () => {
+                if (deleteButton.classList.contains("confirming")) {
+                    clearTimeout(confirmTimeout);
+                    savedWords = savedWords.filter(
+                        saved => saved.word !== item.word
+                    );
+                    saveStorage();
+                    renderResults();
+                } else {
+                    deleteButton.classList.add("confirming");
+                    deleteButton.textContent = "Confirm?";
+
+                    confirmTimeout = setTimeout(() => {
+                        deleteButton.classList.remove("confirming");
+                        deleteButton.textContent = "Delete";
+                    }, 3000);
+                }
+            }
+        );
+
+        actionButtons.appendChild(copyButton);
+        actionButtons.appendChild(deleteButton);
+
         row.appendChild(content);
-        row.appendChild(copyButton);
+        row.appendChild(actionButtons);
 
         savedWordsContainer.appendChild(row);
     });
 }
+
+
+copyAllSavedButton.addEventListener(
+    "click",
+    async () => {
+        if (savedWords.length === 0) return;
+
+        const allText = savedWords
+            .map(item => item.meaning ? `${item.word}        ${item.meaning}` : item.word)
+            .join("\n");
+
+        await copyToClipboard(allText);
+
+        const originalText = copyAllSavedButton.textContent;
+        copyAllSavedButton.textContent = "Copied All!";
+        setTimeout(() => {
+            copyAllSavedButton.textContent = originalText;
+        }, 1200);
+    }
+);
 
 
 function renderResults() {
